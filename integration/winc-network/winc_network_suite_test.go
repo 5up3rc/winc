@@ -1,6 +1,8 @@
 package main_test
 
 import (
+	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -8,6 +10,7 @@ import (
 	"time"
 
 	testhelpers "code.cloudfoundry.org/winc/integration/helpers"
+	"code.cloudfoundry.org/winc/network"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -21,15 +24,18 @@ const (
 )
 
 var (
-	wincBin         string
-	wincNetworkBin  string
-	grootBin        string
-	grootImageStore string
-	serverBin       string
-	netoutBin       string
-	clientBin       string
-	rootfsURI       string
-	helpers         *testhelpers.Helpers
+	wincBin           string
+	wincNetworkBin    string
+	grootBin          string
+	grootImageStore   string
+	serverBin         string
+	netoutBin         string
+	clientBin         string
+	rootfsURI         string
+	helpers           *testhelpers.Helpers
+	snetworkTempDir   string
+	networkConfigFile string
+	snetworkConfig    network.Config
 )
 
 func TestWincNetwork(t *testing.T) {
@@ -80,8 +86,17 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	helpers = testhelpers.NewHelpers(wincBin, grootBin, grootImageStore, wincNetworkBin)
+
+	tempDir, err = ioutil.TempDir("", "winc-network.config")
+	Expect(err).NotTo(HaveOccurred())
+	networkConfigFile = filepath.Join(tempDir, "winc-network.json")
+
+	snetworkConfig = helpers.GenerateNetworkConfig()
+	fmt.Printf("%+v\n", snetworkConfig)
+	helpers.CreateNetwork(snetworkConfig, networkConfigFile)
 })
 
 var _ = AfterSuite(func() {
+	helpers.DeleteNetwork(snetworkConfig, networkConfigFile)
 	gexec.CleanupBuildArtifacts()
 })
